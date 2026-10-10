@@ -8,3 +8,5 @@ env/
 *.log
 .cache/
 .DS_Store
+chroma_db/
+md5*.txt

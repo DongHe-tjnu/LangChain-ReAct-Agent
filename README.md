@@ -1,178 +1,168 @@
-# 🤖 LangChain ReAct Agent 智能客服
+# LangChain ReAct Agent with Hindsight Memory
 
+这是一个基于 LangChain 的 ReAct 智能客服项目，重点集成了 **Hindsight 长期记忆**。Agent 可以跨会话记住用户的稳定事实、偏好、长期项目、经历和目标，并在后续回答前自动召回相关信息。
 
-## 项目概述
+项目同时保留了工具调用、RAG 知识库、动态 Prompt 和 Streamlit 对话界面。模型服务默认使用硅基流动（SiliconFlow），也可以切换回阿里云百炼。
 
-- 本项目聚焦于智能客服场景下的 Agent 应用实践，通过引入知识库检索、工具调用和动态提示词切换，实现对用户咨询、故障问答和使用报告生成等任务的支持。  
-- 项目当前以扫地机器人为示例场景，后续也可扩展到其他垂直客服场景。
----
+## 长期记忆效果
 
-## 核心特性
+下面的演示中，用户先提供职业背景和项目偏好，随后只询问“我是做什么的”，Agent 便能从 Hindsight 中召回相关长期记忆并生成个性化回答。
 
-#### 1. ReAct Agent 多工具调用
-- 集成外部信息查询、用户信息获取等工具能力，支持 Agent 根据任务自动选择合适工具完成辅助推理。
+![Hindsight 长期记忆演示](assets/hindsight-memory-demo.png)
 
-#### 2. RAG 检索增强问答
-- 基于向量数据库构建知识库检索能力，支持对扫地机器人相关文档进行召回与问答生成，提升回复准确性。
+## Memory 工作流程
 
-#### 3. 个性化报告生成
-- 通过动态提示词切换，在普通问答模式与报告生成模式之间灵活切换，为用户生成定制化使用分析内容。
+```text
+用户输入
+   │
+   ▼
+Hindsight Recall / Reflect
+   │
+   ▼
+Memory Context 注入 System Prompt
+   │
+   ▼
+LangChain ReAct Agent ──► Tools / RAG
+   │
+   ▼
+最终回答
+   │
+   ▼
+高价值信息提取
+   │
+   ▼
+Hindsight Retain
+```
 
-#### 4. Streamlit 流式对话界面
-- 提供可交互的聊天界面，支持流式输出，便于展示完整的 Agent 问答过程与使用体验。
+### Recall
 
-#### 5. 模块化工程结构
-- 项目按 Agent、RAG、模型层、配置层、工具层等模块进行拆分，便于理解整体架构并支持后续扩展。
+Agent 在回答前根据当前问题召回相关记忆。召回内容只作为独立的 `Memory Context` 注入 System Prompt，不修改原有 Tool Prompt 和 ReAct 工具流程。
 
----
+### Retain
+
+回答完成后，模型会从用户输入中提取最多 5 条适合长期保存的信息，并异步写入 Hindsight。系统不会直接保存整段聊天，也会过滤寒暄、一次性问题和 API Key 等敏感凭证。
+
+### Reflect
+
+Reflection 用于归纳与当前问题相关的用户画像、长期兴趣、持续项目和目标。空 Memory Bank 会自动跳过 Reflection，避免无意义调用。
+
+### 记忆类型
+
+- `Fact`：稳定事实
+- `Preference`：长期偏好
+- `Project`：持续项目
+- `Experience`：重要经历
+- `Profile`：用户画像
+- `Task`：长期任务或目标
+
+### 多用户隔离
+
+Streamlit 侧边栏提供 `Memory 用户 ID`。每个用户 ID 会经过哈希映射到独立的 Hindsight Memory Bank，不会与其他用户共享记忆。
+
+```text
+user_id ──► SHA-256 映射 ──► 独立 bank_id
+```
+
+### 可插拔与故障降级
+
+业务层只依赖 `MemoryProvider` 抽象接口，Hindsight SDK 被封装在 Adapter 中。以后替换为 Mem0、Graphiti 或 Zep 时，不需要修改 Agent 主流程。
+
+Hindsight 不可用、请求超时或接口异常时，Memory 会自动降级，Agent 仍然可以正常回答。
+
+## Hindsight 连接
+
+本项目不负责部署或修改 Hindsight，只连接已经运行的服务。Hindsight 项目与相关资料见：[vectorize-io/hindsight](https://github.com/vectorize-io/hindsight)。
+
+连接配置位于 `config/memory.yml`：
+
+```yaml
+ENABLE_MEMORY: true
+HINDSIGHT_API_URL: http://localhost:8888
+HINDSIGHT_API_KEY:
+```
+
+也可以使用环境变量覆盖：
+
+```cmd
+set "HINDSIGHT_API_URL=http://localhost:8888"
+set "HINDSIGHT_API_KEY=your-hindsight-api-key"
+```
+
+本地服务未启用鉴权时，`HINDSIGHT_API_KEY` 可以留空。将 `ENABLE_MEMORY` 设为 `false` 即可关闭整个记忆模块，不需要修改业务代码。
+
+## 其他能力
+
+- LangChain ReAct Agent 与 Tool Calling
+- Chroma RAG 知识库检索
+- 扫地机器人故障、维护和选购问答
+- 动态报告 Prompt 与使用报告生成
+- Streamlit 流式对话界面
+- 硅基流动 OpenAI 兼容模型接口
+
 ## 项目结构
 
-```bash
+```text
 .
-├── agent/                       # Agent 核心逻辑
-│   ├── react_agent.py           # ReAct智能体主逻辑
-│   ├── tools/                   # 工具函数集合
-│   └── middleware.py            # 中间件管理
-├── assets/                      # README 展示图片等静态资源
-├── config/                      # YAML 配置文件
-│   ├── agent.yml                # 智能体配置
-│   ├── chroma.yml               # 向量库配置
-│   ├── prompts.yml              # 提示词配置
-│   └── rag.yml                  # RAG配置
-├── data/                        # 知识库文档与外部数据
-├── model/                       # 模型工厂与模型初始化
-│   └── factory.py               # 模型工厂
-├── prompts/                     # 提示词模板
-├── rag/                         # 检索增强相关模块
-│   ├── rag_service.py           # 检索服务
-│   └── vector_store.py          # 向量存储
-├── utils/                       # 通用工具函数
-│   ├── config_handler.py        # 配置加载
-│   ├── file_handler.py          # 文件处理
-│   ├── logger_handler.py        # 日志管理
-│   ├── path_tool.py             # 路径工具
-│   └── prompt_loader.py         # 提示词加载
-├── app.py                       # Streamlit 应用入口
-├── requirements.txt
-└── README.md
+├── agent/                 # ReAct Agent、工具和中间件
+├── config/                # Agent、RAG、Chroma、Memory 配置
+├── data/                  # RAG 知识库文档
+├── memory/
+│   ├── contracts.py       # Memory Provider 抽象接口
+│   ├── factory.py         # Memory 模块工厂
+│   ├── hindsight_client.py# Hindsight SDK Adapter
+│   ├── memory_extractor.py# 高价值记忆提取
+│   ├── memory_manager.py  # Recall/Retain/Reflect 与故障隔离
+│   └── models.py          # Memory 领域模型
+├── model/factory.py       # 可配置模型供应商
+├── prompts/               # System Prompt 与报告 Prompt
+├── rag/                   # RAG 服务和 Chroma 向量库
+├── app.py                 # Streamlit 入口
+└── requirements.txt
 ```
 
-## 工作流程
+## 快速运行
 
+环境要求：Python 3.10+，推荐使用 Conda 环境。
 
-1. 用户在 Streamlit 页面输入问题
-
-2. Agent 判断当前任务类型 -> 普通问答 / 报告生成
-
-3. 普通问答场景下，调用 RAG 模块检索知识库内容
-
-4. 特定任务场景下，调用外部工具或结构化数据进行辅助生成
-
-5. 最终结果通过流式方式返回到前端界面
-
----
-## 效果预览
-
-### 1. 聊天界面展示
-- 展示用户在前端输入问题后，系统返回问答结果的整体效果。
-
-<img src="assets/chat1.png" width="700"/>
-
-### 2. Agent 工具调用过程
-- 展示 Agent 在任务处理中调用外部工具或执行中间推理的过程。
-  
-<img src="assets/chat2.png" width="700"/>
-
-
-
-
----
-
-
-## 快速开始
-
-### 环境要求
-- Python 3.10 及以上
-- 可用的大模型 API Key（如阿里云百炼）
-
-### 运行前准备
-- 安装项目依赖
-- 配置模型 API Key
-- 准备知识库文档与相关配置文件
-
----
-
-## 安装步骤
-
-- 克隆项目
-```bash
-
-git clone https://github.com/lhh737/LangChain-ReAct-Agent.git
+```cmd
+pip install -r requirements.txt
+set "SILICONFLOW_API_KEY=your-siliconflow-api-key"
+python -m rag.vector_store
+streamlit run app.py --server.port 8502
 ```
-- 安装依赖
-```bash
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+浏览器访问：`http://localhost:8502`
+
+模型配置位于 `config/rag.yml`：
+
+```yaml
+model_provider: siliconflow
+siliconflow_base_url: https://api.siliconflow.cn/v1
+chat_model_name: Qwen/Qwen3.6-27B
+embedding_model_name: BAAI/bge-m3
 ```
-- 配置环境变量
 
-- 在config目录下创建调整相应的 yml 配置文件
-```bash
-export DASHSCOPE_API_KEY="your-api-key"
+更换 Embedding 模型后需要使用新的 Chroma 集合重新建立知识库，不能混用旧向量。
+
+## Memory 验证示例
+
+第一轮输入：
+
+```text
+我正在开发一个企业票据 OCR 项目，主要使用 Python、PaddleOCR 和 FastAPI。我更重视稳定性和可维护性。
 ```
-- 启动应用
-```bash
-streamlit run app.py
+
+等待终端出现：
+
+```text
+[Memory Extraction] candidates=...
+[Memory Retain] ... success=true
 ```
----
 
+随后开启新一轮询问：
 
-## 支持的任务类型
+```text
+我目前在开发什么项目？我做技术选择时最重视什么？
+```
 
-- **知识库问答**：针对扫地机器人等相关文档进行检索与问答生成
-- **工具辅助问答**：在需要外部信息时调用工具增强回复效果
-- **报告生成**：根据输入数据与任务要求生成个性化分析报告
-- **多场景提示词切换**：根据任务类型自动选择合适的提示词模板
-
----
-
-## 配置说明
-
-- 项目主要通过 YAML 文件进行配置管理，首次运行时，建议优先检查以下文件：
-
-> `config/agent.yml` ：Agent 行为与任务流程相关配置
-
-> `config/chroma.yml` ：向量数据库与检索存储配置
-
-> `config/prompts.yml` ：不同任务场景下的提示词配置
-
-> `config/rag.yml` ：RAG 检索参数配置
-
-
-- 若只想完成最小化本地运行，建议先确保：
-1. 已正确配置模型 API Key
-
-2. `config/` 下必要的 YAML 文件已存在
-
-3. `data/` 目录中已放入知识库文档
----
-## 最小成功演示
-
-- 应用启动后，可先尝试以下问题验证项目是否正常运行：
-
-#### 普通问答
-- 扫地机器人有哪些主要功能？
-- 如果机器人无法正常回充，该如何处理？
-
-#### 报告生成
-- 请根据用户数据生成一份个性化使用报告。
-
-如果以上问题能够正常返回内容，说明项目的基础问答与任务切换流程已经运行成功。
-
-
-
----
-
-### ⭐ Final
-- 本项目仅为学习与交流，如果觉得这个项目有帮助，别忘了点个Star！
-
----
+当日志中的 `[Memory Recall] count` 大于 0，说明长期记忆已经成功参与回答。

@@ -76,6 +76,14 @@ from agent.react_agent import ReactAgent
 st.title("智扫通机器人智能客服")
 st.divider()
 
+# Demo 项目尚未接入登录系统，因此由界面提供稳定用户 ID。
+# 生产环境应替换为认证系统中的真实用户唯一标识。
+memory_user_id = st.sidebar.text_input(
+    "Memory 用户 ID",
+    value="1001",
+    help="不同用户 ID 使用不同的 Hindsight Memory Bank。",
+).strip()
+
 if "agent" not in st.session_state:
     st.session_state["agent"] = ReactAgent()
 # 如果页面里还没有聊天记录，就创建一个空列表。后面用户说的话、机器人回答的话都会存到这里。
@@ -89,12 +97,16 @@ for message in st.session_state["message"]:
 prompt = st.chat_input()
 
 if prompt:
+    if not memory_user_id:
+        st.warning("请输入 Memory 用户 ID 后再发送消息。")
+        st.stop()
+
     st.chat_message("user").write(prompt)
     st.session_state["message"].append({"role": "user", "content": prompt})
 
     response_messages = []#创建列表，用来接收agent流式返回的内容
     with st.spinner("智能客服思考中..."):
-        res_stream = st.session_state["agent"].execute_stream(prompt)
+        res_stream = st.session_state["agent"].execute_stream(prompt, user_id=memory_user_id)
         #流式输出，定义一个函数用来捕获 agent返回的流式内容
         def capture(generator, cache_list):     # 捕获
 

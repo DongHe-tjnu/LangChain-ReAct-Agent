@@ -1,0 +1,19 @@
+# Memory 总开关。设为 false 后，Agent 不会访问 Hindsight。
+ENABLE_MEMORY: true
+
+# Hindsight 已由用户在本地独立部署，本项目只连接 API。
+HINDSIGHT_API_URL: http://localhost:8888
+
+# 本地无鉴权部署可留空；生产环境建议使用 HINDSIGHT_API_KEY 环境变量。
+HINDSIGHT_API_KEY:
+
+# 每个 user_id 会映射到独立的 Memory Bank。
+BANK_ID_PREFIX: langchain-react-agent
+
+REQUEST_TIMEOUT_SECONDS: 5.0
+MAX_ATTEMPTS: 1
+RECALL_BUDGET: mid
+RECALL_MAX_TOKENS: 1000
+SEARCH_LIMIT: 20
+ENABLE_REFLECTION: true
+REFLECTION_MAX_TOKENS: 600

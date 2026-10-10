@@ -1,8 +1,9 @@
-collection_name : agent
+# 更换 Embedding 模型后必须使用新集合重新建库，避免混用旧向量。
+collection_name : agent_siliconflow
 persist_directory : chroma_db
 k :  3
 data_path : data
-md5_hex_store : md5.txt
+md5_hex_store : md5_siliconflow.txt
 allow_knowledge_file_type : ["txt","pdf"]
 
 chunk_size : 200

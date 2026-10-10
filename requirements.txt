@@ -4,17 +4,19 @@
 # ==============================================
 
 # 核心大模型框架
-langchain==0.3.7                  # LLM 应用开发核心框架
-langchain-core==0.3.18           # LangChain 核心组件
-langchain-community==0.3.7        # 社区集成组件（各类模型/工具）
+# create_agent 与 middleware API 属于 LangChain 1.x，请勿与 0.3.x 混装。
+langchain==1.4.1                 # LLM 应用开发核心框架
+langchain-core==1.6.9            # LangChain 核心组件（兼容 langchain-openai 1.7）
+langchain-community==0.4.2       # 通义千问等社区集成
+langchain-openai==1.7.0          # OpenAI 兼容接口（硅基流动）
 
 # 向量数据库与文档处理
-langchain-chroma==0.1.4          # Chroma 向量库集成
-chromadb==0.5.15                 # 轻量级向量数据库
-langchain-text-splitters==0.3.2  # 文本分块工具
+langchain-chroma==1.1.0          # Chroma 向量库集成
+chromadb==1.5.9                  # 轻量级向量数据库
+langchain-text-splitters==1.1.3  # 文本分块工具
 
 # 智能体工作流
-langgraph==0.2.50                # 构建 Agent 工作流/多智能体
+langgraph==1.2.12                # 构建 Agent 工作流/多智能体
 
 # 前端界面
 streamlit==1.40.1                # 快速构建 Web 可视化界面
@@ -23,5 +25,8 @@ streamlit==1.40.1                # 快速构建 Web 可视化界面
 pypdf==5.1.0                     # PDF 文档读取解析
 pyyaml==6.0.2                    # 配置文件解析
 
-# 模型服务（阿里通义千问/ dashscope）
-dashscope==1.20.14                # 阿里模型调用 SDK
+# 模型服务（默认硅基流动，保留百炼作为可选回退）
+dashscope==1.27.7                # 阿里模型调用 SDK（可选回退）
+
+# 长期记忆
+hindsight-client==0.10.3         # Hindsight 官方 Python SDK
